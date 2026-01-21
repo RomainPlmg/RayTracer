@@ -3,7 +3,8 @@
 #include <glm/glm.hpp>
 #include <string>
 
-#include "GL_Context.hpp"
+struct GLFWwindow;
+class GLContext;
 
 struct WindowSpecification {
     std::string title;
@@ -33,5 +34,5 @@ class Window {
    private:
     WindowSpecification m_specification;
     GLFWwindow *m_handle = nullptr;
-    GLContext m_glContext;
+    std::unique_ptr<GLContext> m_glContext;
 };

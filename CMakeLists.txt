@@ -13,11 +13,12 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Define executable
 # ============================================================================
 file(GLOB_RECURSE RT_SRC
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
 )
 
 add_executable(RayTracer ${RT_SRC})
 target_include_directories(RayTracer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_compile_definitions(RayTracer PRIVATE "-DASSETS_DIR=\"${CMAKE_SOURCE_DIR}/assets/\"")
 
 # ============================================================================
 # Dependencies
@@ -27,9 +28,9 @@ find_package(OpenGL REQUIRED)
 include(FetchContent)
 
 FetchContent_Declare(
-    glfw
-    GIT_REPOSITORY https://github.com/glfw/glfw.git
-    GIT_TAG 3.4
+        glfw
+        GIT_REPOSITORY https://github.com/glfw/glfw.git
+        GIT_TAG 3.4
 )
 FetchContent_Declare(
         spdlog

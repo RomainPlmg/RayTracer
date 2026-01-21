@@ -1,0 +1,37 @@
+#version 460 core
+
+// Define a workers group (8x8 threads)
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+// Output texture
+layout(rgba32f, binding = 0) writeonly uniform image2D imgOutput;
+
+// Uniforms
+uniform mat4 u_InverseProjection;
+uniform mat4 u_InverseView;
+uniform vec3 u_CameraPosition;
+
+struct Ray {
+    vec3 origin;
+    vec3 direction;
+};
+
+void main() {
+    ivec2 pixelCoords = ivec2(gl_GlobalInvocationID.xy);
+    vec2 size = imageSize(imgOutput);
+
+    // Normalize pixel coordinates between -1 & 1
+    vec2 uv = (vec2(pixelCoords) / size) * 2.0 - 1.0;
+
+    // Convert from screen coordinates to view coordinates
+    vec4 target = u_InverseProjection * vec4(uv.x, uv.y, 1.0, 1.0);
+
+    Ray ray;
+    ray.origin = u_CameraPosition;
+
+    // Convert from view coordinates to world coordinates (If you turn your head)
+    // Normalize the vector here because doesn't care about the strength, just want the direction
+    ray.direction = vec3(u_InverseView * vec4(normalize(vec3(target) / target.w), 0.0));
+
+    imageStore(imgOutput, pixelCoords, vec4(ray.direction, 1.0));
+}

@@ -2,6 +2,9 @@
 
 #include <iostream>
 
+#include "GLContext.hpp"
+#include "Input.hpp"
+
 static Application *s_application = nullptr;
 
 static void glfwErrorCallback(int error, const char *description) {
@@ -22,6 +25,9 @@ Application::Application(const ApplicationSpecification &specification)
 
     m_window = std::make_shared<Window>(m_specification.window_spec);
     m_window->init();
+
+    Input::init(*m_window);
+    Input::setCursorMode(Input::CursorMode::Disabled);
 }
 
 Application::~Application() {

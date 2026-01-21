@@ -1,6 +1,6 @@
 #include "Texture.hpp"
 
-#include "GL_Context.hpp"
+#include "GLContext.hpp"
 
 Texture::Texture(int width, int height) : m_width(width), m_height(height) {
     glCreateTextures(GL_TEXTURE_2D, 1, &m_id);

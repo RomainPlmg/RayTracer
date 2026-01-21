@@ -1,0 +1,45 @@
+#include "Camera.hpp"
+
+#include "Application.hpp"
+#include "Input.hpp"
+
+Camera::Camera(glm::vec3 position) : m_position(position) {}
+
+void Camera::update(float ts) {
+    glm::vec2 mousePos = Input::getMousePosition();
+    glm::vec2 mouseOffset = (m_lastMousePos - mousePos) * m_sensitivity * ts;
+    m_yaw -= mouseOffset.x;
+    m_pitch += mouseOffset.y;
+
+    // Make sure that when pitch is out of bounds, screen doesn't get flipped
+    if (m_pitch > 89.0f) m_pitch = 89.0f;
+    if (m_pitch < -89.0f) m_pitch = -89.0f;
+
+    updateVectors();
+    updateMatrices();
+
+    m_lastMousePos = Input::getMousePosition();
+}
+
+void Camera::updateVectors() {  // Calculate the new Front vector
+    glm::vec3 front(0.0f);
+    front.x = cos(glm::radians(m_yaw)) * cos(glm::radians(m_pitch));
+    front.y = sin(glm::radians(m_pitch));
+    front.z = sin(glm::radians(m_yaw)) * cos(glm::radians(m_pitch));
+    m_front = glm::normalize(front);
+
+    auto worldUp = glm::vec3(0, 1, 0);
+    m_right = glm::normalize(glm::cross(m_front, worldUp));
+    m_up = glm::normalize(glm::cross(m_right, m_front));
+}
+void Camera::updateMatrices() {
+    auto size = Application::get().getFrameBufferSize();
+    float aspect = size.x / size.y;
+
+    glm::mat4 view = glm::lookAt(m_position, m_position + m_front, m_up);
+    glm::mat4 proj =
+        glm::perspective(glm::radians(45.0f), aspect, 0.1f, 100.0f);
+
+    m_invView = glm::inverse(view);
+    m_invProj = glm::inverse(proj);
+}

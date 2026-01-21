@@ -1,6 +1,6 @@
-#include "GL_Context.hpp"
-
 #include <iostream>
+
+#include "GLContext.hpp"
 
 bool GLContext::init() {
     int version = gladLoadGL(glfwGetProcAddress);
