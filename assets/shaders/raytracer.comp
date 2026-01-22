@@ -16,6 +16,61 @@ struct Ray {
     vec3 direction;
 };
 
+struct Sphere {
+    vec3 center;
+    float radius;
+    vec4 color;
+};
+
+float hitSphere(Ray ray, Sphere sphere) {
+    /**************************************/
+    /* Check intersection with the sphere */
+    /**************************************/
+    /* 
+       Ray equation -> P(t) = O + tD (O - origin, D - direction, t - distance from the ray origin to the sphere)
+       Sphere equation -> All points P at the exact same distance R from the center C
+       So ||P-C|| = R (Vector norm) 
+
+       We want to find t:
+       ||P-C|| = R
+       <=> (P-C).(P-C) = R²
+       <=> R² = P.P - 2P.C + C.C
+       <=> R² = (O + tD).(O + tD) - 2(O + tD).C + C.C
+       <=> R² = O.O + 2t(O.D) + t²(D.D) - 2(O.C) - 2t(D.C) + C.C
+       <=> R² = t²(D.D) + 2t(O.D - D.C) + O.O + C.C - 2(O.C)
+       <=> R² = t²(D.D) + 2t(O.D - D.C) + O.O + C.C - 2(O.C)
+       <=> t²(D.D) + 2t(D.(O-C)) + ((O-C).(O-C) - R²) = 0
+
+       Let L = O-C -> Vector from the ray origin to the sphere center
+       t²(D.D) + 2t(D.L) + (L.L - R²) = 0
+
+       Final equation is at² + tb + c, with:
+       a = D.D
+       b = 2(D.L)
+       c = L.L - R²
+
+       We calculate discriminant to find t
+       del = b² - 4ac
+       del < 0 -> No solution, the ray is not intersecting the sphere
+       del = 0 -> One solution, single intersection point (the ray grazes the sphere)
+       del > 0 -> Two solutions, the ray passes through the sphere
+    */
+
+    vec3 oc = ray.origin - sphere.center;
+    float a = dot(ray.direction, ray.direction);
+    float b = 2 * dot(ray.direction, oc);
+    float c = dot(oc, oc) - sphere.radius * sphere.radius;
+
+    float delta = b * b - 4 * a * c;
+    if (delta < 0) { // No solution
+        return -1;
+    } else {
+        float t = (-b - sqrt(delta)) / 2 * a;
+        if (t < 0) return -1; // The sphere is behind us
+        return t;
+    }
+}
+
 void main() {
     ivec2 pixelCoords = ivec2(gl_GlobalInvocationID.xy);
     vec2 size = imageSize(imgOutput);
@@ -33,5 +88,23 @@ void main() {
     // Normalize the vector here because doesn't care about the strength, just want the direction
     ray.direction = vec3(u_InverseView * vec4(normalize(vec3(target) / target.w), 0.0));
 
-    imageStore(imgOutput, pixelCoords, vec4(ray.direction, 1.0));
+    // Build a sphere
+    Sphere sphere;
+    sphere.center = vec3(0.0, 0.0, 5.0);
+    sphere.radius = 2.0;
+    sphere.color = vec4(1.0, 0.0, 0.0, 1.0);
+
+    vec4 color;
+
+    float t = hitSphere(ray, sphere);
+    if (t > 0) {
+        vec3 hitPoint = ray.origin + t * ray.direction; // Get the hit point coordinates on the sphere
+        vec3 normal = normalize(hitPoint - sphere.center); // Calculte the hit point normal
+        vec3 lightDir = normalize(vec3(-1.0, -1.0, -1.0)); // Light direction of the sun
+        float diffuse = max(dot(lightDir, normal), 0.0);
+
+        color = sphere.color * diffuse;
+    }
+
+    imageStore(imgOutput, pixelCoords, color);
 }
