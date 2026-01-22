@@ -1,13 +1,18 @@
 #include "Camera.hpp"
 
+#include <glm/ext/matrix_transform.hpp>
+
 #include "Application.hpp"
 #include "Input.hpp"
+
+constexpr float SENSITIVITY = 100.0f;
+
 
 Camera::Camera(glm::vec3 position) : m_position(position) {}
 
 void Camera::update(float ts) {
     glm::vec2 mousePos = Input::getMousePosition();
-    glm::vec2 mouseOffset = (m_lastMousePos - mousePos) * m_sensitivity * ts;
+    glm::vec2 mouseOffset = (m_lastMousePos - mousePos) * SENSITIVITY * ts;
     m_yaw -= mouseOffset.x;
     m_pitch += mouseOffset.y;
 

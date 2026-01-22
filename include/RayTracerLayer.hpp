@@ -22,4 +22,5 @@ class RayTracerLayer : public Layer {
     uint32_t m_fbo;
 
     void blit();
+    void handleInputs(float ts);
 };
