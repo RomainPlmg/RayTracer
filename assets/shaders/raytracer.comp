@@ -22,6 +22,13 @@ struct Sphere {
     vec4 color;
 };
 
+struct HitPayload {
+    float distance;
+    vec3 point;
+    vec3 normal;
+    vec4 color;
+};
+
 float hitSphere(Ray ray, Sphere sphere) {
     /**************************************/
     /* Check intersection with the sphere */
@@ -71,40 +78,59 @@ float hitSphere(Ray ray, Sphere sphere) {
     }
 }
 
+HitPayload traceRay(Ray ray) {
+    HitPayload payload;
+
+    // Build a sphere
+    Sphere spheres[2];
+    spheres[0].center = vec3(0.0, 0.0, -5.0);
+    spheres[0].radius = 1.0;
+    spheres[0].color = vec4(1.0, 0.2, 0.2, 1.0);
+
+    spheres[1].center = vec3(0.0, -101.0, -5.0);
+    spheres[1].radius = 100.0;
+    spheres[1].color = vec4(0.8, 0.8, 0.8, 1.0);
+    
+    float closestT = 1e30; // Infinite
+
+    for (int i = 0; i < 2; i++) {
+        float t = hitSphere(ray, spheres[i]);
+        if (t > 0 && t < closestT) { // Object is closer than the old one
+            payload.distance = t;
+            payload.point = ray.origin + t * ray.direction;
+            payload.normal = normalize(payload.point - spheres[i].center);
+            payload.color = spheres[i].color;
+
+            closestT = t;
+        }
+    }
+
+    return payload;
+}
+
 void main() {
     ivec2 pixelCoords = ivec2(gl_GlobalInvocationID.xy);
     vec2 size = imageSize(imgOutput);
-
-    // Normalize pixel coordinates between -1 & 1
-    vec2 uv = (vec2(pixelCoords) / size) * 2.0 - 1.0;
-
-    // Convert from screen coordinates to view coordinates
-    vec4 target = u_InverseProjection * vec4(uv.x, uv.y, 1.0, 1.0);
+    vec2 uv = (vec2(pixelCoords) / size) * 2.0 - 1.0; // Normalize pixel coordinates between -1 & 1
+    vec4 target = u_InverseProjection * vec4(uv.x, uv.y, 1.0, 1.0); // Convert from screen coordinates to view coordinates
 
     Ray ray;
     ray.origin = u_CameraPosition;
-
     // Convert from view coordinates to world coordinates (If you turn your head)
     // Normalize the vector here because doesn't care about the strength, just want the direction
     ray.direction = vec3(u_InverseView * vec4(normalize(vec3(target) / target.w), 0.0));
 
-    // Build a sphere
-    Sphere sphere;
-    sphere.center = vec3(0.0, 0.0, 5.0);
-    sphere.radius = 2.0;
-    sphere.color = vec4(1.0, 0.0, 0.0, 1.0);
+    HitPayload payload = traceRay(ray);
+    vec3 finalColor;
 
-    vec4 color;
-
-    float t = hitSphere(ray, sphere);
-    if (t > 0) {
-        vec3 hitPoint = ray.origin + t * ray.direction; // Get the hit point coordinates on the sphere
-        vec3 normal = normalize(hitPoint - sphere.center); // Calculte the hit point normal
-        vec3 lightDir = normalize(vec3(-1.0, -1.0, -1.0)); // Light direction of the sun
-        float diffuse = max(dot(lightDir, normal), 0.0);
-
-        color = sphere.color * diffuse;
+    if (payload.distance > 0) { // Hit sphere
+        vec3 lightDir = normalize(vec3(-1.0, 1.0, -1.0)); // Light direction of the sun
+        float diffuse = max(dot(lightDir, payload.normal), 0.0);
+        finalColor = payload.color.rgb * diffuse;
+    } else {
+        finalColor = vec3(0.1, 0.1, 0.2);
     }
+    
 
-    imageStore(imgOutput, pixelCoords, color);
+    imageStore(imgOutput, pixelCoords, vec4(finalColor, 1.0));
 }
