@@ -3,6 +3,7 @@
 #include <memory>
 
 #include "Application.hpp"
+#include "Buffer.hpp"
 #include "GLContext.hpp"
 #include "Input.hpp"
 #include "glm/fwd.hpp"
@@ -12,6 +13,13 @@ constexpr float VELOCITY = 15.0f;
 RayTracerLayer::RayTracerLayer() {
     m_camera = std::make_unique<Camera>(glm::vec3(0.0f));
     m_shader = std::make_unique<Shader>(ASSETS_DIR "shaders/raytracer.comp");
+
+    m_spheres.emplace_back(Sphere{glm::vec3(0.0, 0.0, -5.0), 1.0,
+                                Material{glm::vec4(1.0, 0.2, 0.2, 1.0), 1.0}});
+    m_spheres.emplace_back(Sphere{glm::vec3(0.0, -201.0, -5.0), 200.0,
+                                Material{glm::vec4(0.9, 0.9, 0.9, 1.0), 1.0}});
+
+    m_ssbo = std::make_unique<ShaderStorageBuffer<Sphere>>(m_spheres, 0);
 
     // Create a framebuffer and attach it to the texture
     glCreateFramebuffers(1, &m_fbo);
@@ -36,6 +44,8 @@ void RayTracerLayer::onRender() {
     m_shader->setMat4("u_InverseProjection", m_camera->invProj());
     m_shader->setMat4("u_InverseView", m_camera->invView());
     m_shader->setVec3("u_CameraPosition", m_camera->position());
+    m_shader->setFloat("u_Bounces", 1);
+    m_shader->setInt("u_SphereCount", m_spheres.size());
 
     // Execute the compute shader -> asynchronous
     glDispatchCompute(size.x / 8, size.y / 8, 1);

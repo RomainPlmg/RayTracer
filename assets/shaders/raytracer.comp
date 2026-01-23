@@ -1,7 +1,34 @@
 #version 460 core
 
+struct Material {
+    vec4 color;
+    float roughness;
+    float _pad0[3];
+};
+struct Sphere {
+    vec3 center;
+    float _pad0;
+    float radius;
+    float _pad1[3];
+    Material material;
+};
+struct Ray {
+    vec3 origin;
+    vec3 direction;
+};
+struct HitInfo {
+    float distance;
+    vec3 point;
+    vec3 normal;
+    vec4 color;
+};
+
 // Define a workers group (8x8 threads)
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(std430, binding = 0) buffer SceneData {
+    Sphere spheres[];
+};
 
 // Output texture
 layout(rgba32f, binding = 0) writeonly uniform image2D imgOutput;
@@ -10,24 +37,11 @@ layout(rgba32f, binding = 0) writeonly uniform image2D imgOutput;
 uniform mat4 u_InverseProjection;
 uniform mat4 u_InverseView;
 uniform vec3 u_CameraPosition;
+uniform float u_Bounces;
+uniform int u_SphereCount;
 
-struct Ray {
-    vec3 origin;
-    vec3 direction;
-};
-
-struct Sphere {
-    vec3 center;
-    float radius;
-    vec4 color;
-};
-
-struct HitPayload {
-    float distance;
-    vec3 point;
-    vec3 normal;
-    vec4 color;
-};
+float epsilon = 0.001;
+float ambient = 0.1;
 
 float hitSphere(Ray ray, Sphere sphere) {
     /**************************************/
@@ -78,34 +92,25 @@ float hitSphere(Ray ray, Sphere sphere) {
     }
 }
 
-HitPayload traceRay(Ray ray) {
-    HitPayload payload;
-
-    // Build a sphere
-    Sphere spheres[2];
-    spheres[0].center = vec3(0.0, 0.0, -5.0);
-    spheres[0].radius = 1.0;
-    spheres[0].color = vec4(1.0, 0.2, 0.2, 1.0);
-
-    spheres[1].center = vec3(0.0, -101.0, -5.0);
-    spheres[1].radius = 100.0;
-    spheres[1].color = vec4(0.8, 0.8, 0.8, 1.0);
+HitInfo traceRay(Ray ray) {
+    HitInfo info;
+    info.distance = -1.0;
     
     float closestT = 1e30; // Infinite
 
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < u_SphereCount; i++) {
         float t = hitSphere(ray, spheres[i]);
         if (t > 0 && t < closestT) { // Object is closer than the old one
-            payload.distance = t;
-            payload.point = ray.origin + t * ray.direction;
-            payload.normal = normalize(payload.point - spheres[i].center);
-            payload.color = spheres[i].color;
+            info.distance = t;
+            info.point = ray.origin + t * ray.direction;
+            info.normal = normalize(info.point - spheres[i].center);
+            info.color = spheres[i].material.color;
 
             closestT = t;
         }
     }
 
-    return payload;
+    return info;
 }
 
 void main() {
@@ -120,15 +125,23 @@ void main() {
     // Normalize the vector here because doesn't care about the strength, just want the direction
     ray.direction = vec3(u_InverseView * vec4(normalize(vec3(target) / target.w), 0.0));
 
-    HitPayload payload = traceRay(ray);
     vec3 finalColor;
+    HitInfo info = traceRay(ray);
 
-    if (payload.distance > 0) { // Hit sphere
-        vec3 lightDir = normalize(vec3(-1.0, 1.0, -1.0)); // Light direction of the sun
-        float diffuse = max(dot(lightDir, payload.normal), 0.0);
-        finalColor = payload.color.rgb * diffuse;
+    if (info.distance > 0) { // Hit sphere
+        vec3 lightDir = normalize(vec3(1.0, 1.0, 1.0)); // Light direction of the sun
+        float diffuse = max(dot(lightDir, info.normal), 0.0);
+
+        // Calculate shadows
+        Ray shadowRay = Ray(info.point + info.normal * epsilon, lightDir);
+        HitInfo shadowInfo = traceRay(shadowRay);
+        if (shadowInfo.distance > 0) {
+            finalColor = info.color.rgb * ambient;
+        } else {
+            finalColor = info.color.rgb * (diffuse + ambient);
+        }
     } else {
-        finalColor = vec3(0.1, 0.1, 0.2);
+        finalColor = vec3(0.0);
     }
     
 

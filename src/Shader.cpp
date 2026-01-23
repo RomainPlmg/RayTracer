@@ -2,6 +2,10 @@
 
 #include "GLContext.hpp"
 
+#include <fstream>
+#include <iostream>
+#include <sstream>
+
 Shader::Shader(const std::string& computePath) {
     std::string code = readFile(computePath);
     const char* cCode = code.c_str();
@@ -33,6 +37,14 @@ void Shader::setMat4(const std::string& name, const glm::mat4& mat) const {
 
 void Shader::setVec3(const std::string& name, const glm::vec3& vec) const {
     glProgramUniform3fv(m_id, getLoc(name), 1, glm::value_ptr(vec));
+}
+
+void Shader::setFloat(const std::string& name, const float val) const {
+    glProgramUniform1fv(m_id, getLoc(name), 1, &val);
+}
+
+void Shader::setInt(const std::string& name, const int val) const {
+    glProgramUniform1iv(m_id, getLoc(name), 1, &val);
 }
 
 int Shader::getLoc(const std::string& name) const {
