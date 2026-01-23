@@ -2,8 +2,10 @@
 
 #include <cassert>
 #include <stdexcept>
+#include <string>
 
 #include "GLContext.hpp"
+#include "GLFW/glfw3.h"
 
 Window::Window(const WindowSpecification &specification)
     : m_specification(specification) {
@@ -44,6 +46,17 @@ void Window::clear() {
 void Window::swapBuffers() {
     assert(m_handle);
     glfwSwapBuffers(m_handle);
+
+    // TODO: Temporary FPS print
+    static double lastTime = 0.0;
+    double currTime = glfwGetTime();
+
+    double fps = 1.0 / (currTime - lastTime);
+    std::string nwTitle = m_specification.title.c_str() +
+                          std::string(" | FPS: ") + std::to_string((int)fps);
+    glfwSetWindowTitle(m_handle, nwTitle.c_str());
+
+    lastTime = currTime;
 }
 void Window::setVsync(const bool enabled) { glfwSwapInterval(enabled); }
 
