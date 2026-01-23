@@ -1,8 +1,9 @@
 #include "Application.hpp"
 
+#include <GLFW/glfw3.h>
+
 #include <iostream>
 
-#include <GLFW/glfw3.h>
 #include "Input.hpp"
 
 static Application *s_application = nullptr;
@@ -25,6 +26,7 @@ Application::Application(const ApplicationSpecification &specification)
 
     m_window = std::make_shared<Window>(m_specification.window_spec);
     m_window->init();
+    m_window->setVsync(false);
 
     Input::init(*m_window);
 }

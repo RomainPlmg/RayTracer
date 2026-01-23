@@ -34,6 +34,7 @@ class RayTracerLayer : public Layer {
     std::unique_ptr<ShaderStorageBuffer<Sphere>> m_ssbo;
     uint32_t m_fbo;
 
+    glm::vec2 m_viewportSize;
     std::vector<Sphere> m_spheres;
 
     void blit();

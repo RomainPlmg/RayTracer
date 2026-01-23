@@ -26,10 +26,11 @@ void Camera::update(float ts) {
         if (m_pitch < -89.0f) m_pitch = -89.0f;
 
         updateVectors();
-        updateMatrices();
     } else {
         Input::setCursorMode(Input::CursorMode::Normal);
     }
+
+    updateMatrices();
 
     m_lastMousePos = Input::getMousePosition();
 }

@@ -14,15 +14,25 @@ RayTracerLayer::RayTracerLayer() {
     m_camera = std::make_unique<Camera>(glm::vec3(0.0f));
     m_shader = std::make_unique<Shader>(ASSETS_DIR "shaders/raytracer.comp");
 
-    m_spheres.emplace_back(Sphere{glm::vec3(0.0, 0.0, -5.0), 1.0,
-                                Material{glm::vec4(1.0, 0.2, 0.2, 1.0), 1.0}});
-    m_spheres.emplace_back(Sphere{glm::vec3(0.0, -201.0, -5.0), 200.0,
-                                Material{glm::vec4(0.9, 0.9, 0.9, 1.0), 1.0}});
+    m_spheres.emplace_back(
+        Sphere{glm::vec3(0.0, 0.0, -5.0), 1.0,
+               Material{glm::vec4(1.0, 0.2, 0.2, 1.0), 1.0}});
+    m_spheres.emplace_back(
+        Sphere{glm::vec3(0.0, -201.0, -5.0), 200.0,
+               Material{glm::vec4(0.9, 0.9, 0.9, 1.0), 1.0}});
+    m_spheres.emplace_back(
+        Sphere{glm::vec3(2.0, 2.0, -1.0), 2.0,
+               Material{glm::vec4(0.0, 1.0, 0.0, 1.0), 0.0}});
 
     m_ssbo = std::make_unique<ShaderStorageBuffer<Sphere>>(m_spheres, 0);
 
     // Create a framebuffer and attach it to the texture
     glCreateFramebuffers(1, &m_fbo);
+
+    m_viewportSize = Application::get().getFrameBufferSize();
+
+    m_texture = std::make_unique<Texture>(m_viewportSize.x, m_viewportSize.y);
+    glNamedFramebufferTexture(m_fbo, GL_COLOR_ATTACHMENT0, m_texture->id(), 0);
 }
 
 void RayTracerLayer::onEvent(Event &event) {}
@@ -33,12 +43,17 @@ void RayTracerLayer::onUpdate(float ts) {
 }
 
 void RayTracerLayer::onRender() {
-    m_shader->use();
-
     auto size = Application::get().getFrameBufferSize();
-    m_texture = std::make_unique<Texture>(size.x, size.y);
-    glNamedFramebufferTexture(m_fbo, GL_COLOR_ATTACHMENT0, m_texture->id(), 0);
 
+    if ((size.x != m_viewportSize.x || size.y != m_viewportSize.y) &&
+        (m_viewportSize.x != 0 || m_viewportSize.y != 0)) {
+        m_texture = std::make_unique<Texture>(size.x, size.y);
+        glNamedFramebufferTexture(m_fbo, GL_COLOR_ATTACHMENT0, m_texture->id(),
+                                  0);
+        m_viewportSize = size;
+    }
+
+    m_shader->use();
     m_texture->bind(0);
 
     m_shader->setMat4("u_InverseProjection", m_camera->invProj());
@@ -48,7 +63,7 @@ void RayTracerLayer::onRender() {
     m_shader->setInt("u_SphereCount", m_spheres.size());
 
     // Execute the compute shader -> asynchronous
-    glDispatchCompute(size.x / 8, size.y / 8, 1);
+    glDispatchCompute((size.x + 31) / 32, (size.y + 31) / 32, 1);
 
     // Waiting for GPU to finish
     glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
