@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-#include "GLContext.hpp"
+#include <GLFW/glfw3.h>
 #include "Input.hpp"
 
 static Application *s_application = nullptr;
@@ -27,7 +27,6 @@ Application::Application(const ApplicationSpecification &specification)
     m_window->init();
 
     Input::init(*m_window);
-    Input::setCursorMode(Input::CursorMode::Disabled);
 }
 
 Application::~Application() {

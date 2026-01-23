@@ -3,25 +3,33 @@
 #include <glm/ext/matrix_transform.hpp>
 
 #include "Application.hpp"
+#include "GLFW/glfw3.h"
 #include "Input.hpp"
 
 constexpr float SENSITIVITY = 100.0f;
 
-
-Camera::Camera(glm::vec3 position) : m_position(position) {}
+Camera::Camera(glm::vec3 position) : m_position(position) {
+    m_lastMousePos = Input::getMousePosition();
+}
 
 void Camera::update(float ts) {
-    glm::vec2 mousePos = Input::getMousePosition();
-    glm::vec2 mouseOffset = (m_lastMousePos - mousePos) * SENSITIVITY * ts;
-    m_yaw -= mouseOffset.x;
-    m_pitch += mouseOffset.y;
+    if (Input::isMouseButtonPressed(GLFW_MOUSE_BUTTON_MIDDLE)) {
+        Input::setCursorMode(Input::CursorMode::Disabled);
+        glm::vec2 mousePos = Input::getMousePosition();
+        glm::vec2 mouseOffset = (m_lastMousePos - mousePos) * SENSITIVITY * ts;
+        m_yaw -= mouseOffset.x;
+        m_pitch += mouseOffset.y;
 
-    // Make sure that when pitch is out of bounds, screen doesn't get flipped
-    if (m_pitch > 89.0f) m_pitch = 89.0f;
-    if (m_pitch < -89.0f) m_pitch = -89.0f;
+        // Make sure that when pitch is out of bounds, screen doesn't get
+        // flipped
+        if (m_pitch > 89.0f) m_pitch = 89.0f;
+        if (m_pitch < -89.0f) m_pitch = -89.0f;
 
-    updateVectors();
-    updateMatrices();
+        updateVectors();
+        updateMatrices();
+    } else {
+        Input::setCursorMode(Input::CursorMode::Normal);
+    }
 
     m_lastMousePos = Input::getMousePosition();
 }
