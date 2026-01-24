@@ -1,10 +1,10 @@
 #include "Shader.hpp"
 
-#include "GLContext.hpp"
-
 #include <fstream>
 #include <iostream>
 #include <sstream>
+
+#include "GLContext.hpp"
 
 Shader::Shader(const std::string& computePath) {
     std::string code = readFile(computePath);
@@ -45,6 +45,10 @@ void Shader::setFloat(const std::string& name, const float val) const {
 
 void Shader::setInt(const std::string& name, const int val) const {
     glProgramUniform1iv(m_id, getLoc(name), 1, &val);
+}
+
+void Shader::setUInt(const std::string& name, const uint32_t val) const {
+    glProgramUniform1uiv(m_id, getLoc(name), 1, &val);
 }
 
 int Shader::getLoc(const std::string& name) const {

@@ -24,12 +24,11 @@ void Camera::update(float ts) {
         // flipped
         if (m_pitch > 89.0f) m_pitch = 89.0f;
         if (m_pitch < -89.0f) m_pitch = -89.0f;
-
-        updateVectors();
     } else {
         Input::setCursorMode(Input::CursorMode::Normal);
     }
 
+    updateVectors();
     updateMatrices();
 
     m_lastMousePos = Input::getMousePosition();
