@@ -14,15 +14,19 @@ RayTracerLayer::RayTracerLayer() {
     m_camera = std::make_unique<Camera>(glm::vec3(0.0f));
     m_shader = std::make_unique<Shader>(ASSETS_DIR "shaders/raytracer.comp");
 
-    m_spheres.emplace_back(
-        Sphere{glm::vec3(0.0, 0.0, -5.0), 1.0,
-               Material{glm::vec4(1.0, 0.2, 0.2, 1.0), 1.0}});
-    m_spheres.emplace_back(
-        Sphere{glm::vec3(0.0, -201.0, -5.0), 200.0,
-               Material{glm::vec4(0.9, 0.9, 0.9, 1.0), 1.0}});
-    m_spheres.emplace_back(
-        Sphere{glm::vec3(2.0, 2.0, -1.0), 2.0,
-               Material{glm::vec4(0.0, 1.0, 0.0, 1.0), 0.0}});
+    m_spheres.emplace_back(Sphere{glm::vec3(0.0, 0.0, -5.0), 1.0,
+                                  Material{glm::vec3(1.0, 0.2, 0.2)}});
+    m_spheres.emplace_back(Sphere{glm::vec3(0.0, 0.0, -8.0), 1.0,
+                                  Material{glm::vec3(0.2, 1.0, 0.2)}});
+    m_spheres.emplace_back(Sphere{glm::vec3(0.0, 0.0, -2.0), 1.0,
+                                  Material{glm::vec3(0.2, 0.2, 1.0)}});
+
+    m_spheres.emplace_back(Sphere{
+        glm::vec3(7.0, 3.0, -5.0), 2.0,
+        Material{glm::vec3(1.0, 1.0, 1.0), 1.0, glm::vec3(1.0, 1.0, 1.0)}});
+
+    m_spheres.emplace_back(Sphere{glm::vec3(0.0, -201.0, -5.0), 200.0,
+                                  Material{glm::vec3(0.9, 0.9, 0.9)}});
 
     m_ssbo = std::make_unique<ShaderStorageBuffer<Sphere>>(m_spheres, 0);
 
@@ -59,8 +63,9 @@ void RayTracerLayer::onRender() {
     m_shader->setMat4("u_InverseProjection", m_camera->invProj());
     m_shader->setMat4("u_InverseView", m_camera->invView());
     m_shader->setVec3("u_CameraPosition", m_camera->position());
-    m_shader->setFloat("u_Bounces", 1);
+    m_shader->setFloat("u_Bounces", 10);
     m_shader->setInt("u_SphereCount", m_spheres.size());
+    m_shader->setUInt("u_FrameIndex", m_FrameIndex++);
 
     // Execute the compute shader -> asynchronous
     glDispatchCompute((size.x + 31) / 32, (size.y + 31) / 32, 1);

@@ -1,15 +1,14 @@
 #version 460 core
 
 struct Material {
-    vec4 color;
-    float roughness;
-    float _pad0[3];
+    vec3 colour;
+    float emissionStrength;
+    vec3 emissionColour;
+    float _pad0;
 };
 struct Sphere {
     vec3 center;
-    float _pad0;
     float radius;
-    float _pad1[3];
     Material material;
 };
 struct Ray {
@@ -17,14 +16,15 @@ struct Ray {
     vec3 direction;
 };
 struct HitInfo {
-    float distance;
-    vec3 point;
-    vec3 normal;
-    vec4 color;
+    bool didHit;
+    float hitDistance;
+    vec3 hitPoint;
+    vec3 hitNormal;
+    Material hitMaterial;
 };
 
 // Define a workers group (8x8 threads)
-layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 
 layout(std430, binding = 0) buffer SceneData {
     Sphere spheres[];
@@ -39,11 +39,22 @@ uniform mat4 u_InverseView;
 uniform vec3 u_CameraPosition;
 uniform float u_Bounces;
 uniform int u_SphereCount;
+uniform uint u_FrameIndex;
 
 float epsilon = 0.001;
-float ambient = 0.1;
 
-float hitSphere(Ray ray, Sphere sphere) {
+uint NextRandom(inout uint state) {
+    state = state * 747796405u + 2891336453u;
+    uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
+    return (word >> 22u) ^ word;
+}
+
+// Return a value between 0 & 1;
+float RandomFloat(inout uint state) {
+    return float(NextRandom(state)) / 4294967295.0;
+}
+
+float HitSphere(Ray ray, Sphere sphere) {
     /**************************************/
     /* Check intersection with the sphere */
     /**************************************/
@@ -92,30 +103,83 @@ float hitSphere(Ray ray, Sphere sphere) {
     }
 }
 
-HitInfo traceRay(Ray ray) {
-    HitInfo info;
-    info.distance = -1.0;
+HitInfo CalculateRayCollision(Ray ray) {
+    HitInfo hitInfo;
+    hitInfo.hitDistance = -1.0;
+    hitInfo.didHit = false;
     
     float closestT = 1e30; // Infinite
 
     for (int i = 0; i < u_SphereCount; i++) {
-        float t = hitSphere(ray, spheres[i]);
+        float t = HitSphere(ray, spheres[i]);
         if (t > 0 && t < closestT) { // Object is closer than the old one
-            info.distance = t;
-            info.point = ray.origin + t * ray.direction;
-            info.normal = normalize(info.point - spheres[i].center);
-            info.color = spheres[i].material.color;
+            hitInfo.hitDistance = t;
+            hitInfo.hitPoint = ray.origin + t * ray.direction;
+            hitInfo.hitNormal = normalize(hitInfo.hitPoint - spheres[i].center);
+            hitInfo.hitMaterial = spheres[i].material;
 
             closestT = t;
         }
     }
 
-    return info;
+    if (hitInfo.hitDistance > 0) {
+        hitInfo.didHit = true;
+    }
+
+    return hitInfo;
+}
+
+vec3 RandomDirection(inout uint seed) {
+    for (int limit = 0; limit < 100; limit++) {
+        // Generate random direction in a cube -1 <-> 1
+        vec3 rndVector = vec3 (
+            RandomFloat(seed) * 2.0 - 1,
+            RandomFloat(seed) * 2.0 - 1,
+            RandomFloat(seed) * 2.0 - 1
+        );
+
+        // This method generate a cube, then the edges are denser in points, so need to filter
+        // If the vector is in the sphere
+        if (length(rndVector) < 1.0) {
+            return normalize(rndVector);
+        }
+    }
+
+    return vec3(0.0);
+}
+
+vec3 RandomHemisphereDirection(vec3 normal, inout uint seed) {
+    vec3 rndDir = RandomDirection(seed);
+    return rndDir * sign(dot(normal, rndDir));
+}
+
+vec3 TraceRay(Ray ray, inout uint seed) {
+    vec3 incomingLight = vec3(0.0);
+    vec3 rayColour = vec3(1.0);
+
+    for (int i = 0; i < u_Bounces; i++) {
+        HitInfo hitInfo = CalculateRayCollision(ray);
+        if (hitInfo.didHit) {
+            ray.origin = hitInfo.hitPoint + hitInfo.hitNormal * epsilon;
+            ray.direction = RandomHemisphereDirection(hitInfo.hitNormal, seed);
+
+            Material material = hitInfo.hitMaterial;
+            vec3 emittedLight = material.emissionColour * material.emissionStrength;
+            incomingLight += emittedLight * rayColour;
+            rayColour *= material.colour;
+        } else {
+            break;
+        }
+    }
+
+    return incomingLight;
 }
 
 void main() {
     ivec2 pixelCoords = ivec2(gl_GlobalInvocationID.xy);
     vec2 size = imageSize(imgOutput);
+    uint pixelIndex = uint(pixelCoords.y * size.x + pixelCoords.x);
+
     vec2 uv = (vec2(pixelCoords) / size) * 2.0 - 1.0; // Normalize pixel coordinates between -1 & 1
     vec4 target = u_InverseProjection * vec4(uv.x, uv.y, 1.0, 1.0); // Convert from screen coordinates to view coordinates
 
@@ -125,25 +189,9 @@ void main() {
     // Normalize the vector here because doesn't care about the strength, just want the direction
     ray.direction = vec3(u_InverseView * vec4(normalize(vec3(target) / target.w), 0.0));
 
-    vec3 finalColor;
-    HitInfo info = traceRay(ray);
-
-    if (info.distance > 0) { // Hit sphere
-        vec3 lightDir = normalize(vec3(1.0, 1.0, 1.0)); // Light direction of the sun
-        float diffuse = max(dot(lightDir, info.normal), 0.0);
-
-        // Calculate shadows
-        Ray shadowRay = Ray(info.point + info.normal * epsilon, lightDir);
-        HitInfo shadowInfo = traceRay(shadowRay);
-        if (shadowInfo.distance > 0) {
-            finalColor = info.color.rgb * ambient;
-        } else {
-            finalColor = info.color.rgb * (diffuse + ambient);
-        }
-    } else {
-        finalColor = vec3(0.0);
-    }
+    uint hashSeed = pixelIndex + u_FrameIndex * 712314u;
+    vec3 finalColour = TraceRay(ray, hashSeed);
     
 
-    imageStore(imgOutput, pixelCoords, vec4(finalColor, 1.0));
+    imageStore(imgOutput, pixelCoords, vec4(finalColour, 1.0));
 }

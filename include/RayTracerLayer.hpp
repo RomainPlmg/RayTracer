@@ -9,13 +9,15 @@
 #include "Texture.hpp"
 
 struct Material {
-    glm::vec4 color;
-    alignas(16) float roughness;
+    alignas(16) glm::vec3 colour = glm::vec3(0.0);
+    float emissionStrength = 0.0;
+    alignas(16) glm::vec3 emissionColour = glm::vec3(0.0);
+    float _pad0 = 0.0f;
 };
 
 struct Sphere {
-    alignas(16) glm::vec3 center;
-    alignas(16) float radius;
+    alignas(16) glm::vec3 center = glm::vec3(0.0);
+    float radius = 1.0;
     Material material;
 };
 
@@ -36,6 +38,7 @@ class RayTracerLayer : public Layer {
 
     glm::vec2 m_viewportSize;
     std::vector<Sphere> m_spheres;
+    uint32_t m_FrameIndex = 0;
 
     void blit();
     void handleInputs(float ts);
