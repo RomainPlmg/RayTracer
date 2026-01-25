@@ -1,6 +1,7 @@
 #include "RayTracerLayer.hpp"
 
 #include <memory>
+#include <random>
 
 #include "Application.hpp"
 #include "Buffer.hpp"
@@ -14,19 +15,13 @@ RayTracerLayer::RayTracerLayer() {
     m_camera = std::make_unique<Camera>(glm::vec3(0.0f));
     m_shader = std::make_unique<Shader>(ASSETS_DIR "shaders/raytracer.comp");
 
-    m_spheres.emplace_back(Sphere{glm::vec3(0.0, 0.0, -5.0), 1.0,
-                                  Material{glm::vec3(1.0, 0.2, 0.2)}});
-    m_spheres.emplace_back(Sphere{glm::vec3(0.0, 0.0, -8.0), 1.0,
-                                  Material{glm::vec3(0.2, 1.0, 0.2)}});
-    m_spheres.emplace_back(Sphere{glm::vec3(0.0, 0.0, -2.0), 1.0,
-                                  Material{glm::vec3(0.2, 0.2, 1.0)}});
-
     m_spheres.emplace_back(
-        Sphere{glm::vec3(7.0, 3.0, -5.0), 2.0,
-               Material{glm::vec3(0.0), 10.0, glm::vec3(1.0)}});
+        Sphere{glm::vec3(0.0, -201.0, -5.0), 200.0, Material{glm::vec3(0.9f)}});
+    m_spheres.emplace_back(
+        Sphere{glm::vec3(0.0, 10.0f, -5.0), 5.0f,
+               Material{glm::vec3(0.9f), 1.0f, glm::vec3(1.0f), 20.0f}});
 
-    m_spheres.emplace_back(Sphere{glm::vec3(0.0, -201.0, -5.0), 200.0,
-                                  Material{glm::vec3(0.9, 0.9, 0.9)}});
+    GenerateRandomScene(m_spheres, 200);
 
     m_ssbo = std::make_unique<ShaderStorageBuffer<Sphere>>(m_spheres, 0);
 
@@ -41,7 +36,7 @@ RayTracerLayer::RayTracerLayer() {
     m_TextureB = std::make_unique<Texture>(m_viewportSize.x, m_viewportSize.y);
 }
 
-void RayTracerLayer::onEvent(Event &event) {}
+void RayTracerLayer::onEvent(Event& event) {}
 
 void RayTracerLayer::onUpdate(float ts) {
     handleInputs(ts);
@@ -117,4 +112,38 @@ void RayTracerLayer::handleInputs(float ts) {
     auto camPos = m_camera->position();
     camPos += dir * VELOCITY * ts;
     m_camera->setPosition(camPos);
+}
+void RayTracerLayer::GenerateRandomScene(std::vector<Sphere>& spheres,
+                                         int count) {
+    std::mt19937 JohnsonGen(
+        1337);  // Seed fixe pour pouvoir retrouver la même scène
+    std::uniform_real_distribution<float> dis(-1.0f, 1.0f);
+    std::uniform_real_distribution<float> colorDis(0.0f, 1.0f);
+
+    for (int i = 0; i < count; i++) {
+        Sphere s;
+        // Position : on les étale sur X et Z, et on les pose sur le sol (Y = 0)
+        // en supposant que ton rayon est 1.0
+        s.center = glm::vec3(dis(JohnsonGen) * 15.0f, 0.0f,
+                             dis(JohnsonGen) * 15.0f - 10.0f);
+        s.radius = dis(JohnsonGen);
+
+        // Matériau aléatoire
+        s.material.colour = glm::vec3(
+            colorDis(JohnsonGen), colorDis(JohnsonGen), colorDis(JohnsonGen));
+
+        // On décide aléatoirement si c'est un miroir ou du mat
+        float isMirror = colorDis(JohnsonGen);
+        if (isMirror > 0.8f) {
+            s.material.roughness = 0.0f;  // Miroir parfait
+        } else {
+            s.material.roughness = colorDis(JohnsonGen);  // Rugosité variée
+        }
+
+        // Par défaut, pas d'émission (tu les ajoutes à la main après)
+        s.material.emissionColour = glm::vec3(0.0f);
+        s.material.emissionStrength = 0.0f;
+
+        spheres.push_back(s);
+    }
 }

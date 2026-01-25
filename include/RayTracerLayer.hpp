@@ -10,9 +10,9 @@
 
 struct Material {
     alignas(16) glm::vec3 colour = glm::vec3(0.0);
-    float emissionStrength = 0.0;
+    float roughness = 1.0f;
     alignas(16) glm::vec3 emissionColour = glm::vec3(0.0);
-    float _pad0 = 0.0f;
+    float emissionStrength = 0.0;
 };
 
 struct Sphere {
@@ -25,7 +25,7 @@ class RayTracerLayer : public Layer {
    public:
     RayTracerLayer();
 
-    void onEvent(Event &event) override;
+    void onEvent(Event& event) override;
     void onUpdate(float ts) override;
     void onRender() override;
 
@@ -43,4 +43,5 @@ class RayTracerLayer : public Layer {
 
     void blit();
     void handleInputs(float ts);
+    void GenerateRandomScene(std::vector<Sphere>& spheres, int count);
 };
