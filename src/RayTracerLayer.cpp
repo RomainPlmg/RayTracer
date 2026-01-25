@@ -21,9 +21,9 @@ RayTracerLayer::RayTracerLayer() {
     m_spheres.emplace_back(Sphere{glm::vec3(0.0, 0.0, -2.0), 1.0,
                                   Material{glm::vec3(0.2, 0.2, 1.0)}});
 
-    m_spheres.emplace_back(Sphere{
-        glm::vec3(7.0, 3.0, -5.0), 2.0,
-        Material{glm::vec3(1.0, 1.0, 1.0), 1.0, glm::vec3(1.0, 1.0, 1.0)}});
+    m_spheres.emplace_back(
+        Sphere{glm::vec3(7.0, 3.0, -5.0), 2.0,
+               Material{glm::vec3(0.0), 10.0, glm::vec3(1.0)}});
 
     m_spheres.emplace_back(Sphere{glm::vec3(0.0, -201.0, -5.0), 200.0,
                                   Material{glm::vec3(0.9, 0.9, 0.9)}});
@@ -35,8 +35,10 @@ RayTracerLayer::RayTracerLayer() {
 
     m_viewportSize = Application::get().getFrameBufferSize();
 
-    m_texture = std::make_unique<Texture>(m_viewportSize.x, m_viewportSize.y);
-    glNamedFramebufferTexture(m_fbo, GL_COLOR_ATTACHMENT0, m_texture->id(), 0);
+    m_TextureA = std::make_unique<Texture>(m_viewportSize.x, m_viewportSize.y);
+    glNamedFramebufferTexture(m_fbo, GL_COLOR_ATTACHMENT0, m_TextureA->id(), 0);
+
+    m_TextureB = std::make_unique<Texture>(m_viewportSize.x, m_viewportSize.y);
 }
 
 void RayTracerLayer::onEvent(Event &event) {}
@@ -51,14 +53,22 @@ void RayTracerLayer::onRender() {
 
     if ((size.x != m_viewportSize.x || size.y != m_viewportSize.y) &&
         (m_viewportSize.x != 0 || m_viewportSize.y != 0)) {
-        m_texture = std::make_unique<Texture>(size.x, size.y);
-        glNamedFramebufferTexture(m_fbo, GL_COLOR_ATTACHMENT0, m_texture->id(),
+        m_TextureA = std::make_unique<Texture>(size.x, size.y);
+        m_TextureB = std::make_unique<Texture>(size.x, size.y);
+        glNamedFramebufferTexture(m_fbo, GL_COLOR_ATTACHMENT0, m_TextureA->id(),
                                   0);
         m_viewportSize = size;
+        m_FrameIndex = 1;
+    }
+
+    if (m_camera->invView() != m_oldInvView) {
+        m_oldInvView = m_camera->invView();
+        m_FrameIndex = 1;
     }
 
     m_shader->use();
-    m_texture->bind(0);
+    m_TextureA->bind(0, GL_WRITE_ONLY);
+    m_TextureB->bind(1, GL_READ_WRITE);
 
     m_shader->setMat4("u_InverseProjection", m_camera->invProj());
     m_shader->setMat4("u_InverseView", m_camera->invView());

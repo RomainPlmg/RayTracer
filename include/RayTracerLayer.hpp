@@ -30,7 +30,7 @@ class RayTracerLayer : public Layer {
     void onRender() override;
 
    private:
-    std::unique_ptr<Texture> m_texture;
+    std::unique_ptr<Texture> m_TextureA, m_TextureB;
     std::unique_ptr<Camera> m_camera;
     std::unique_ptr<Shader> m_shader;
     std::unique_ptr<ShaderStorageBuffer<Sphere>> m_ssbo;
@@ -38,7 +38,8 @@ class RayTracerLayer : public Layer {
 
     glm::vec2 m_viewportSize;
     std::vector<Sphere> m_spheres;
-    uint32_t m_FrameIndex = 0;
+    uint32_t m_FrameIndex = 1;
+    glm::mat4 m_oldInvView{0.0f};
 
     void blit();
     void handleInputs(float ts);

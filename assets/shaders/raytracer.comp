@@ -31,7 +31,8 @@ layout(std430, binding = 0) buffer SceneData {
 };
 
 // Output texture
-layout(rgba32f, binding = 0) writeonly uniform image2D imgOutput;
+layout(rgba32f, binding = 0) writeonly uniform image2D newImgOutput;
+layout(rgba32f, binding = 1) uniform image2D oldImgOutput;
 
 // Uniforms
 uniform mat4 u_InverseProjection;
@@ -140,7 +141,7 @@ vec3 RandomDirection(inout uint seed) {
 
         // This method generate a cube, then the edges are denser in points, so need to filter
         // If the vector is in the sphere
-        if (length(rndVector) < 1.0) {
+        if (dot(rndVector, rndVector) < 1.0) {
             return normalize(rndVector);
         }
     }
@@ -157,16 +158,19 @@ vec3 TraceRay(Ray ray, inout uint seed) {
     vec3 incomingLight = vec3(0.0);
     vec3 rayColour = vec3(1.0);
 
-    for (int i = 0; i < u_Bounces; i++) {
+    for (int i = 0; i <= u_Bounces; i++) {
         HitInfo hitInfo = CalculateRayCollision(ray);
         if (hitInfo.didHit) {
             ray.origin = hitInfo.hitPoint + hitInfo.hitNormal * epsilon;
             ray.direction = RandomHemisphereDirection(hitInfo.hitNormal, seed);
 
             Material material = hitInfo.hitMaterial;
+            // If the source ray is not aligned with the normal, the incident ray is weaker
+            // It's the Lambert Cosine
+            float cosTheta = dot(hitInfo.hitNormal, ray.direction);
             vec3 emittedLight = material.emissionColour * material.emissionStrength;
             incomingLight += emittedLight * rayColour;
-            rayColour *= material.colour;
+            rayColour *= material.colour * cosTheta * 2.0;
         } else {
             break;
         }
@@ -177,7 +181,7 @@ vec3 TraceRay(Ray ray, inout uint seed) {
 
 void main() {
     ivec2 pixelCoords = ivec2(gl_GlobalInvocationID.xy);
-    vec2 size = imageSize(imgOutput);
+    vec2 size = imageSize(newImgOutput);
     uint pixelIndex = uint(pixelCoords.y * size.x + pixelCoords.x);
 
     vec2 uv = (vec2(pixelCoords) / size) * 2.0 - 1.0; // Normalize pixel coordinates between -1 & 1
@@ -190,8 +194,12 @@ void main() {
     ray.direction = vec3(u_InverseView * vec4(normalize(vec3(target) / target.w), 0.0));
 
     uint hashSeed = pixelIndex + u_FrameIndex * 712314u;
-    vec3 finalColour = TraceRay(ray, hashSeed);
-    
 
-    imageStore(imgOutput, pixelCoords, vec4(finalColour, 1.0));
+    vec3 newColour = TraceRay(ray, hashSeed);
+    vec3 oldColour = imageLoad(oldImgOutput, pixelCoords).rgb;
+
+    vec3 finalColour = (oldColour * (u_FrameIndex - 1) + newColour) / u_FrameIndex;
+
+    imageStore(oldImgOutput, pixelCoords, vec4(finalColour, 1.0));
+    imageStore(newImgOutput, pixelCoords, vec4(finalColour, 1.0));
 }

@@ -14,6 +14,6 @@ Texture::Texture(int width, int height) : m_width(width), m_height(height) {
 
 Texture::~Texture() { glDeleteTextures(1, &m_id); }
 
-void Texture::bind(uint32_t unit) const {
-    glBindImageTexture(unit, m_id, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+void Texture::bind(const uint32_t unit, const GLuint access) const {
+    glBindImageTexture(unit, m_id, 0, GL_FALSE, 0, access, GL_RGBA32F);
 }
