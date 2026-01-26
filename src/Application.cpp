@@ -9,7 +9,7 @@
 static Application *s_application = nullptr;
 
 static void glfwErrorCallback(int error, const char *description) {
-    std::cerr << "[GLFW Error" << error << "]" << description << std::endl;
+    std::cerr << "[GLFW Error " << error << "] " << description << std::endl;
 }
 
 Application::Application(const ApplicationSpecification &specification)
@@ -33,6 +33,7 @@ Application::Application(const ApplicationSpecification &specification)
 
 Application::~Application() {
     m_window->destroy();
+    m_layerStack.clear();
     glfwTerminate();
     s_application = nullptr;
 

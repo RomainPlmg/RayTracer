@@ -42,11 +42,26 @@ FetchContent_Declare(
         GIT_REPOSITORY https://github.com/g-truc/glm.git
         GIT_TAG 1.0.3
 )
+FetchContent_Declare(
+        imgui
+        GIT_REPOSITORY https://github.com/ocornut/imgui.git
+        GIT_TAG v1.92.5-docking
+)
 
 FetchContent_MakeAvailable(glfw)
 FetchContent_MakeAvailable(spdlog)
 FetchContent_MakeAvailable(glm)
+FetchContent_MakeAvailable(imgui)
 
 add_subdirectory(vendor)
 
+# IMGUI doesn't have a CMakeLists.txt, so need to compile manually
+file(GLOB IMGUI_SRC
+        ${imgui_SOURCE_DIR}/*.cpp
+        ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
+        ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
+)
+
+target_sources(RayTracer PRIVATE ${IMGUI_SRC})
+target_include_directories(RayTracer PRIVATE ${imgui_SOURCE_DIR})
 target_link_libraries(RayTracer PUBLIC OpenGL::GL glad glfw glm::glm spdlog)
