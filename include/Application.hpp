@@ -19,10 +19,10 @@ class Application {
     void run();
     void stop();
 
-    template <typename TLayer>
+    template <typename TLayer, typename... TArgs>
         requires(std::is_base_of_v<Layer, TLayer>)
-    void pushLayer() {
-        m_layerStack.push_back(std::make_unique<TLayer>());
+    void pushLayer(TArgs&&... args) {
+        m_layerStack.push_back(std::make_unique<TLayer>(std::forward<TArgs>(args)...));
     }
 
     [[nodiscard]] glm::vec2 getFrameBufferSize() const {

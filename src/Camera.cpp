@@ -6,9 +6,7 @@
 #include "GLFW/glfw3.h"
 #include "Input.hpp"
 
-constexpr float SENSITIVITY = 100.0f;
-
-Camera::Camera(glm::vec3 position) : m_position(position) {
+Camera::Camera(CameraSettings& settings) : m_settings(settings) {
     m_lastMousePos = Input::getMousePosition();
 }
 
@@ -16,7 +14,7 @@ void Camera::update(float ts) {
     if (Input::isMouseButtonPressed(GLFW_MOUSE_BUTTON_MIDDLE)) {
         Input::setCursorMode(Input::CursorMode::Disabled);
         glm::vec2 mousePos = Input::getMousePosition();
-        glm::vec2 mouseOffset = (m_lastMousePos - mousePos) * SENSITIVITY * ts;
+        glm::vec2 mouseOffset = (m_lastMousePos - mousePos) * m_settings.sensitivity * ts;
         m_yaw -= mouseOffset.x;
         m_pitch += mouseOffset.y;
 
@@ -49,9 +47,10 @@ void Camera::updateMatrices() {
     auto size = Application::get().getFrameBufferSize();
     float aspect = size.x / size.y;
 
-    glm::mat4 view = glm::lookAt(m_position, m_position + m_front, m_up);
-    glm::mat4 proj =
-        glm::perspective(glm::radians(45.0f), aspect, 0.1f, 100.0f);
+    glm::mat4 view = glm::lookAt( m_settings.position,  m_settings.position + m_front, m_up);
+    glm::mat4 proj;
+
+    proj = glm::perspective(glm::radians(m_settings.fov), aspect, 0.1f, 100.0f);
 
     m_invView = glm::inverse(view);
     m_invProj = glm::inverse(proj);

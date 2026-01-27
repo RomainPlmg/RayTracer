@@ -5,8 +5,10 @@
 #include <imgui.h>
 
 #include "Application.hpp"
+#include "Camera.hpp"
+#include "glm/gtc/type_ptr.hpp"
 
-GUILayer::GUILayer() {
+GUILayer::GUILayer(RayTracerSceneData& sceneData) : m_sceneData(sceneData) {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
@@ -37,7 +39,19 @@ void GUILayer::onRender() {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
-    ImGui::ShowDemoWindow();
+
+    bool changed = false;
+
+    ImGui::Begin("Scene settings");
+    ImGui::Text("Camera");
+    changed |= ImGui::DragFloat3("Position", glm::value_ptr(m_sceneData.cameraSettings.position), 0.1f);
+    changed |= ImGui::SliderFloat("FOV", &m_sceneData.cameraSettings.fov, 10.0f, 120.0f); // Based on Minecraft interval
+    ImGui::SliderFloat("Sensitivity", &m_sceneData.cameraSettings.sensitivity, 1.0f, 250.0f);
+    ImGui::Separator();
+    ImGui::Text("Ray Tracer");
+    changed |= ImGui::SliderInt("Bounces", &m_sceneData.rayBounces, 0, 20);
+    ImGui::End();
+
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }

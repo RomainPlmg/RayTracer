@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <memory>
 
 #include "Buffer.hpp"
@@ -21,13 +22,21 @@ struct Sphere {
     Material material;
 };
 
+struct RayTracerSceneData {
+    std::vector<Sphere> spheres;
+    CameraSettings cameraSettings;
+    int rayBounces = 3;
+};
+
 class RayTracerLayer : public Layer {
    public:
-    RayTracerLayer();
+    RayTracerLayer(RayTracerSceneData& sceneData);
 
     void onEvent(Event& event) override;
     void onUpdate(float ts) override;
     void onRender() override;
+
+    RayTracerSceneData& getSceneData() { return m_data; }
 
    private:
     std::unique_ptr<Texture> m_TextureA, m_TextureB;
@@ -37,9 +46,10 @@ class RayTracerLayer : public Layer {
     uint32_t m_fbo;
 
     glm::vec2 m_viewportSize;
-    std::vector<Sphere> m_spheres;
+    RayTracerSceneData& m_data;
     uint32_t m_FrameIndex = 1;
     glm::mat4 m_oldInvView{0.0f};
+    glm::mat4 m_oldInvProj{0.0f};
 
     void blit();
     void handleInputs(float ts);

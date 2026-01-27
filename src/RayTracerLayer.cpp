@@ -11,19 +11,20 @@
 
 constexpr float VELOCITY = 15.0f;
 
-RayTracerLayer::RayTracerLayer() {
-    m_camera = std::make_unique<Camera>(glm::vec3(0.0f));
+RayTracerLayer::RayTracerLayer(RayTracerSceneData& sceneData)
+    : m_data(sceneData) {
+    m_camera = std::make_unique<Camera>(m_data.cameraSettings);
     m_shader = std::make_unique<Shader>(ASSETS_DIR "shaders/raytracer.comp");
 
-    m_spheres.emplace_back(
+    m_data.spheres.emplace_back(
         Sphere{glm::vec3(0.0, -201.0, -5.0), 200.0, Material{glm::vec3(0.9f)}});
-    m_spheres.emplace_back(
+    m_data.spheres.emplace_back(
         Sphere{glm::vec3(0.0, 10.0f, -5.0), 5.0f,
                Material{glm::vec3(0.9f), 1.0f, glm::vec3(1.0f), 20.0f}});
 
-    GenerateRandomScene(m_spheres, 200);
+    GenerateRandomScene(m_data.spheres, 200);
 
-    m_ssbo = std::make_unique<ShaderStorageBuffer<Sphere>>(m_spheres, 0);
+    m_ssbo = std::make_unique<ShaderStorageBuffer<Sphere>>(m_data.spheres, 0);
 
     // Create a framebuffer and attach it to the texture
     glCreateFramebuffers(1, &m_fbo);
@@ -46,13 +47,13 @@ void RayTracerLayer::onUpdate(float ts) {
 void RayTracerLayer::onRender() {
     auto size = Application::get().getFrameBufferSize();
 
-    if ((size.x != m_viewportSize.x || size.y != m_viewportSize.y) &&
-        (m_viewportSize.x != 0 || m_viewportSize.y != 0)) {
+    if (m_camera->invProj() != m_oldInvProj) {
         m_TextureA = std::make_unique<Texture>(size.x, size.y);
         m_TextureB = std::make_unique<Texture>(size.x, size.y);
         glNamedFramebufferTexture(m_fbo, GL_COLOR_ATTACHMENT0, m_TextureA->id(),
                                   0);
         m_viewportSize = size;
+        m_oldInvProj = m_camera->invProj();
         m_FrameIndex = 1;
     }
 
@@ -67,9 +68,9 @@ void RayTracerLayer::onRender() {
 
     m_shader->setMat4("u_InverseProjection", m_camera->invProj());
     m_shader->setMat4("u_InverseView", m_camera->invView());
-    m_shader->setVec3("u_CameraPosition", m_camera->position());
-    m_shader->setFloat("u_Bounces", 10);
-    m_shader->setInt("u_SphereCount", m_spheres.size());
+    m_shader->setVec3("u_CameraPosition", m_data.cameraSettings.position);
+    m_shader->setFloat("u_Bounces", m_data.rayBounces);
+    m_shader->setInt("u_SphereCount", m_data.spheres.size());
     m_shader->setUInt("u_FrameIndex", m_FrameIndex++);
 
     // Execute the compute shader -> asynchronous
@@ -109,7 +110,7 @@ void RayTracerLayer::handleInputs(float ts) {
     if (Input::isKeyPressed(GLFW_KEY_SPACE)) dir += worldUp;
     if (Input::isKeyPressed(GLFW_KEY_LEFT_SHIFT)) dir -= worldUp;
 
-    auto camPos = m_camera->position();
+    auto camPos = m_data.cameraSettings.position;
     camPos += dir * VELOCITY * ts;
     m_camera->setPosition(camPos);
 }

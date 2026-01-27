@@ -5,8 +5,10 @@
 int main(int, char**) {
     Application app;
 
-    app.pushLayer<RayTracerLayer>();
-    app.pushLayer<GUILayer>();
+    RayTracerSceneData data;
+
+    app.pushLayer<RayTracerLayer>(data);
+    app.pushLayer<GUILayer>(data);
 
     app.run();
     app.stop();
