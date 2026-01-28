@@ -40,7 +40,7 @@ void GUILayer::onRender() {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    bool changed = false;
+    auto& changed = m_sceneData.settingsChange;
 
     ImGui::Begin("Scene settings");
     ImGui::Text("Camera");
@@ -49,7 +49,11 @@ void GUILayer::onRender() {
     ImGui::SliderFloat("Sensitivity", &m_sceneData.cameraSettings.sensitivity, 1.0f, 250.0f);
     ImGui::Separator();
     ImGui::Text("Ray Tracer");
+    changed |= ImGui::SliderInt("Ray(s) per pixel", &m_sceneData.raysPerPixel, 1, 10);
     changed |= ImGui::SliderInt("Bounces", &m_sceneData.rayBounces, 0, 20);
+    changed |= ImGui::DragFloat("Diverge strength", &m_sceneData.divergeStrength, 0.1f);
+    changed |= ImGui::DragFloat("Camera aperture", &m_sceneData.aperture, 0.1f);
+    changed |= ImGui::DragFloat("Focus", &m_sceneData.focusDistance, 0.1f);
     ImGui::End();
 
     ImGui::Render();

@@ -62,16 +62,28 @@ void RayTracerLayer::onRender() {
         m_FrameIndex = 1;
     }
 
+    if (m_data.settingsChange) {
+        m_FrameIndex = 1;
+        m_data.settingsChange = false;
+    }
+
     m_shader->use();
     m_TextureA->bind(0, GL_WRITE_ONLY);
     m_TextureB->bind(1, GL_READ_WRITE);
 
+    // Set uniforms
     m_shader->setMat4("u_InverseProjection", m_camera->invProj());
     m_shader->setMat4("u_InverseView", m_camera->invView());
     m_shader->setVec3("u_CameraPosition", m_data.cameraSettings.position);
+    m_shader->setVec3("u_CameraRight", m_camera->right());
+    m_shader->setVec3("u_CameraUp", m_camera->up());
     m_shader->setFloat("u_Bounces", m_data.rayBounces);
     m_shader->setInt("u_SphereCount", m_data.spheres.size());
     m_shader->setUInt("u_FrameIndex", m_FrameIndex++);
+    m_shader->setUInt("u_NbRaysPerPixel", m_data.raysPerPixel);
+    m_shader->setFloat("u_DivergeStrength", m_data.divergeStrength);
+    m_shader->setFloat("u_Aperture", m_data.aperture);
+    m_shader->setFloat("u_FocusDistance", m_data.focusDistance);
 
     // Execute the compute shader -> asynchronous
     glDispatchCompute((size.x + 31) / 32, (size.y + 31) / 32, 1);

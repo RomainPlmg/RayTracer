@@ -25,7 +25,12 @@ struct Sphere {
 struct RayTracerSceneData {
     std::vector<Sphere> spheres;
     CameraSettings cameraSettings;
+    int raysPerPixel = 1;
     int rayBounces = 3;
+    float divergeStrength = 1.0f;
+    float aperture = 0.0f;
+    float focusDistance = 0.0f;
+    bool settingsChange = false;
 };
 
 class RayTracerLayer : public Layer {

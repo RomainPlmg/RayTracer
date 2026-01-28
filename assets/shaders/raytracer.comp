@@ -1,5 +1,7 @@
 #version 460 core
 
+#define PI 3.1415926535897932384626433832795
+
 struct Material {
     vec3 colour;
     float roughness;
@@ -38,9 +40,15 @@ layout(rgba32f, binding = 1) uniform image2D oldImgOutput;
 uniform mat4 u_InverseProjection;
 uniform mat4 u_InverseView;
 uniform vec3 u_CameraPosition;
+uniform vec3 u_CameraRight;
+uniform vec3 u_CameraUp;
 uniform float u_Bounces;
 uniform int u_SphereCount;
 uniform uint u_FrameIndex;
+uniform uint u_NbRaysPerPixel;
+uniform float u_DivergeStrength;
+uniform float u_Aperture;
+uniform float u_FocusDistance;
 
 float epsilon = 0.001;
 
@@ -154,6 +162,12 @@ vec3 RandomHemisphereDirection(vec3 normal, inout uint seed) {
     return rndDir * sign(dot(normal, rndDir));
 }
 
+vec2 RandomPointInCircle(inout uint seed) {
+    float angle = RandomFloat(seed) * 2 * PI;
+    vec2 pointOnCircle = vec2(cos(angle), sin(angle));
+    return pointOnCircle * sqrt(RandomFloat(seed)); // Spread out points outside the center
+}
+
 vec3 GetEnvironmentColour(Ray ray) {
     float skyGradient = ray.direction.y + 1;
     return mix(vec3(1.0), vec3(0.5, 0.7, 1.0), skyGradient);
@@ -195,22 +209,39 @@ void main() {
     uint pixelIndex = uint(pixelCoords.y * size.x + pixelCoords.x);
 
     uint seed = pixelIndex + u_FrameIndex * 712314u;
-    vec2 jitter = vec2(RandomFloat(seed) - 0.5, RandomFloat(seed) - 0.5);
-    vec2 jitteredPixel = vec2(pixelCoords) + jitter;
 
-    vec2 uv = (vec2(jitteredPixel) / size) * 2.0 - 1.0; // Normalize pixel coordinates between -1 & 1
-    vec4 target = u_InverseProjection * vec4(uv.x, uv.y, 1.0, 1.0); // Convert from screen coordinates to view coordinates
+    vec3 totalIncomingLight = vec3(0.0);
 
-    Ray ray;
-    ray.origin = u_CameraPosition;
-    // Convert from view coordinates to world coordinates (If you turn your head)
-    // Normalize the vector here because doesn't care about the strength, just want the direction
-    ray.direction = vec3(u_InverseView * vec4(normalize(vec3(target) / target.w), 0.0));
+    // SSAA & focal
+    for (int rayIndex = 0; rayIndex < u_NbRaysPerPixel; rayIndex++) {
+        vec2 unitDisk = RandomPointInCircle(seed);
+        vec2 jitter = unitDisk * u_DivergeStrength;
 
-    vec3 newColour = TraceRay(ray, seed);
+        vec2 uv = (vec2(pixelCoords) + jitter) / size * 2.0 - 1.0; // Normalize pixel coordinates between -1 & 1
+        vec4 target = u_InverseProjection * vec4(uv, 1.0, 1.0); // Convert from screen coordinates to view coordinates
+                                                                // This is the target without aperture.
+                                                                // Need to recalculate the target if aperture
+
+        Ray ray;
+        ray.origin = u_CameraPosition;
+        ray.direction = vec3(u_InverseView * vec4(normalize(vec3(target) / target.w), 0.0));
+
+        if (u_Aperture > 0.0) {
+            vec3 focusPoint = u_CameraPosition + ray.direction * u_FocusDistance;
+
+            vec2 sensorOffset = unitDisk * u_Aperture / 10.0;
+            vec3 worldOffset = (u_CameraRight * sensorOffset.x) + (u_CameraUp * sensorOffset.y);
+
+            ray.origin = u_CameraPosition + worldOffset;
+            ray.direction = normalize(focusPoint - ray.origin);
+        }
+
+        totalIncomingLight += TraceRay(ray, seed);
+    }
+
     vec3 oldColour = imageLoad(oldImgOutput, pixelCoords).rgb;
 
-    vec3 finalColour = (oldColour * (u_FrameIndex - 1) + newColour) / u_FrameIndex;
+    vec3 finalColour = (oldColour * (u_FrameIndex - 1) + totalIncomingLight / u_NbRaysPerPixel) / u_FrameIndex;
 
     imageStore(oldImgOutput, pixelCoords, vec4(finalColour, 1.0));
 
