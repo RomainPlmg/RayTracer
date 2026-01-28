@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <filesystem>
 #include <memory>
 
 #include "Buffer.hpp"
@@ -31,6 +32,7 @@ struct RayTracerSceneData {
     float aperture = 0.0f;
     float focusDistance = 0.0f;
     bool settingsChange = false;
+    bool saveRequested = false;
 };
 
 class RayTracerLayer : public Layer {
@@ -58,5 +60,6 @@ class RayTracerLayer : public Layer {
 
     void blit();
     void handleInputs(float ts);
-    void GenerateRandomScene(std::vector<Sphere>& spheres, int count);
+    void generateRandomScene(std::vector<Sphere>& spheres, int count);
+    void saveImage(const std::filesystem::path& path);
 };

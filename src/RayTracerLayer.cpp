@@ -1,5 +1,8 @@
 #include "RayTracerLayer.hpp"
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <stb_image_write.h>
+
 #include <memory>
 #include <random>
 
@@ -7,7 +10,6 @@
 #include "Buffer.hpp"
 #include "GLContext.hpp"
 #include "Input.hpp"
-#include "glm/fwd.hpp"
 
 constexpr float VELOCITY = 15.0f;
 
@@ -22,7 +24,7 @@ RayTracerLayer::RayTracerLayer(RayTracerSceneData& sceneData)
         Sphere{glm::vec3(0.0, 10.0f, -5.0), 5.0f,
                Material{glm::vec3(0.9f), 1.0f, glm::vec3(1.0f), 20.0f}});
 
-    GenerateRandomScene(m_data.spheres, 200);
+    generateRandomScene(m_data.spheres, 200);
 
     m_ssbo = std::make_unique<ShaderStorageBuffer<Sphere>>(m_data.spheres, 0);
 
@@ -65,6 +67,12 @@ void RayTracerLayer::onRender() {
     if (m_data.settingsChange) {
         m_FrameIndex = 1;
         m_data.settingsChange = false;
+    }
+
+    if (m_data.saveRequested) {
+        std::string filename = "Render_" + std::to_string(time(0)) + ".png";
+        saveImage(filename);
+        m_data.saveRequested = false;
     }
 
     m_shader->use();
@@ -126,7 +134,7 @@ void RayTracerLayer::handleInputs(float ts) {
     camPos += dir * VELOCITY * ts;
     m_camera->setPosition(camPos);
 }
-void RayTracerLayer::GenerateRandomScene(std::vector<Sphere>& spheres,
+void RayTracerLayer::generateRandomScene(std::vector<Sphere>& spheres,
                                          int count) {
     std::mt19937 JohnsonGen(
         1337);  // Seed fixe pour pouvoir retrouver la même scène
@@ -159,4 +167,16 @@ void RayTracerLayer::GenerateRandomScene(std::vector<Sphere>& spheres,
 
         spheres.push_back(s);
     }
+}
+
+void RayTracerLayer::saveImage(const std::filesystem::path& path) {
+    std::vector<uint8_t> pixels(m_viewportSize.x * m_viewportSize.y * 4);
+
+    glBindTexture(GL_TEXTURE_2D, m_TextureA->id());
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+
+    stbi_flip_vertically_on_write(true);
+
+    stbi_write_png(path.string().c_str(), m_viewportSize.x, m_viewportSize.y, 4,
+                   pixels.data(), m_viewportSize.x * 4);
 }

@@ -54,6 +54,10 @@ void GUILayer::onRender() {
     changed |= ImGui::DragFloat("Diverge strength", &m_sceneData.divergeStrength, 0.1f);
     changed |= ImGui::DragFloat("Camera aperture", &m_sceneData.aperture, 0.1f);
     changed |= ImGui::DragFloat("Focus", &m_sceneData.focusDistance, 0.1f);
+    ImGui::Separator();
+    if (ImGui::Button("Save Render")) {
+        m_sceneData.saveRequested = true;
+    }
     ImGui::End();
 
     ImGui::Render();

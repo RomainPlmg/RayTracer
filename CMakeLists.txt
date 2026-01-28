@@ -57,5 +57,5 @@ file(GLOB IMGUI_SRC
 )
 
 target_sources(RayTracer PRIVATE ${IMGUI_SRC})
-target_include_directories(RayTracer PRIVATE ${imgui_SOURCE_DIR})
+target_include_directories(RayTracer PRIVATE ${imgui_SOURCE_DIR} vendor/stb)
 target_link_libraries(RayTracer PUBLIC OpenGL::GL glad glfw glm::glm)
